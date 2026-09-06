@@ -16,51 +16,27 @@ using Nanoray.Pintail;
 
 namespace FortRise;
 
-internal class OptionalModDependencyOrder : IComparer<ModDelayed>
-{
-    public int Compare(ModDelayed x, ModDelayed y)
-    {
-        if (x.RequiredCount > y.RequiredCount)
-        {
-            return 1;
-        }
-
-        if (x.RequiredCount < y.RequiredCount)
-        {
-            return -1;
-        }
-
-        return 0;
-    }
-}
-
 internal class ModOrder : IComparer<ModuleMetadata>
 {
     public int Compare(ModuleMetadata x, ModuleMetadata y)
     {
         if (x.Priority > y.Priority)
         {
-            return -1;
+            return 1;
         }
 
         if (x.Priority < y.Priority)
         {
-            return 1;
+            return -1;
         }
 
         return 0;
     }
 }
 
-// want to make it as a record class, but somehow we need to store a reference to it, so I can't
-internal class ModDelayed(int requiredCount, ModuleMetadata metadata) 
-{
-    public int RequiredCount = requiredCount;
-    public ModuleMetadata Metadata = metadata;
-}
-
 internal class ModuleManager
 {
+    public enum LoadError { Delayed, Failure }
     public LoadState State { get; set; }
     /// <summary>
     /// Contains a read-only access to all of the Modules.
@@ -77,23 +53,21 @@ internal class ModuleManager
     public static ModuleManager Instance { get; private set; }
     internal List<Mod> InternalFortModules = [];
     internal List<IModResource> InternalMods = [];
+    internal List<Action> awaitedAPIs = [];
 
     internal HashSet<ModuleMetadata> InternalModuleMetadatas = [];
-    internal HashSet<string> InternalTags = [];
 
     internal ModEventsManager EventsManager = new();
 
     internal Dictionary<string, Mod> NameToFortModule = [];
     internal Dictionary<string, IModResource> NameToMod = [];
-    internal HashSet<string> BlacklistedMods;
-    internal HashSet<string> CantLoad = [];
     internal Dictionary<string, Subtexture> NameToIcon = [];
+
+    internal HashSet<string> BlacklistedMods;
 
     private readonly Dictionary<RegistryBatchType, List<RegistryQueue>> registryBatch = [];
     private readonly Dictionary<string, IModRegistry> registries = [];
     private readonly IProxyManager<string> proxyManager;
-
-    public enum LoadError { Delayed, Failure }
 
     private readonly ILogger logger;
     private readonly ILoggerFactory loggerFactory;
@@ -141,17 +115,25 @@ internal class ModuleManager
     internal void LoadModsFromDirectory(string modPath)
     {
         var mods = new List<ModuleMetadata>();
-        var delayedMods = new List<ModDelayed>();
         var modDirectory = modPath;
-        var directory = Directory.GetDirectories(modDirectory);
-        foreach (var dir in directory)
+
+        var directories = Directory.GetDirectories(modDirectory);
+        ref var dir = ref MemoryMarshal.GetArrayDataReference(directories);
+        ref var end = ref Unsafe.Add(ref dir, directories.Length);
+
+        while (Unsafe.IsAddressLessThan(ref dir, ref end))
         {
             if (dir.Contains("_RelinkerCache"))
+            {
+                dir = ref Unsafe.Add(ref dir, 1);
                 continue;
+            }
+
             var dirInfo = new DirectoryInfo(dir);
             if (BlacklistedMods != null && BlacklistedMods.Contains(dirInfo.Name))
             {
                 logger.LogDebug("Ignored '{dir}' as it is blacklisted.", dir);
+                dir = ref Unsafe.Add(ref dir, 1);
                 continue;
             }
 
@@ -160,17 +142,27 @@ internal class ModuleManager
             {
                 mods.Add(meta);
             }
+
+            dir = ref Unsafe.Add(ref dir, 1);
         }
 
         var files = Directory.GetFiles(modDirectory);
-        foreach (var file in files)
+        ref var file = ref MemoryMarshal.GetArrayDataReference(files);
+        end = ref Unsafe.Add(ref file, files.Length);
+
+        while (Unsafe.IsAddressLessThan(ref file, ref end))
         {
             if (!file.EndsWith("zip"))
+            {
+                file = ref Unsafe.Add(ref file, 1);
                 continue;
+            }
+
             var fileName = Path.GetFileName(file);
             if (BlacklistedMods != null && BlacklistedMods.Contains(Path.GetFileName(fileName)))
             {
                 logger.LogDebug("Ignored '{file}' as it is blacklisted.", file);
+                file = ref Unsafe.Add(ref file, 1);
                 continue;
             }
 
@@ -179,25 +171,15 @@ internal class ModuleManager
             {
                 mods.Add(meta);
             }
+
+            file = ref Unsafe.Add(ref file, 1);
         }
 
         mods.Sort(new ModOrder());
-
-        foreach (var mod in mods)
-        {
-            if (!LoadMod(mod, out int requiredDependencies).Check(out _, out LoadError err))
-            {
-                if (err == LoadError.Delayed)
-                {
-                    delayedMods.Add(new ModDelayed(requiredDependencies, mod));
-                }
-            }
-        }
-
-        LoadDelayedMods(delayedMods);
+        LoadMods(mods);
     }
 
-    private ModuleMetadata LoadDir(string dir)
+    private static ModuleMetadata LoadDir(string dir)
     {
         var metaPath = Path.Combine(dir, "meta.json");
         if (!File.Exists(metaPath))
@@ -216,7 +198,7 @@ internal class ModuleManager
         return moduleMetadata;
     }
 
-    private ModuleMetadata LoadZip(string file)
+    private static ModuleMetadata LoadZip(string file)
     {
         using var zipFile = ZipFile.OpenRead(file);
 
@@ -238,6 +220,88 @@ internal class ModuleManager
         }
 
         return moduleMetadata;
+    }
+
+    private void LoadMods(List<ModuleMetadata> mods)
+    {
+        // create a dependency graph
+        Dictionary<string, List<ModuleMetadata>> dependencyGraph = [];
+        Dictionary<string, List<ModuleMetadata>> toLoadAfter = [];
+        foreach (var mod in mods)
+        {
+            if (mod.Dependencies is not null)
+            {
+                foreach (var dep in mod.Dependencies)
+                {
+                    ref var graph = ref CollectionsMarshal.GetValueRefOrAddDefault(dependencyGraph, mod.Name, out bool exists);
+                    if (!exists)
+                    {
+                        graph = [];
+                    }
+
+                    graph.Add(dep);
+                }
+            }
+
+            if (mod.OptionalDependencies is not null)
+            {
+                foreach (var dep in mod.OptionalDependencies)
+                {
+                    ref var graph = ref CollectionsMarshal.GetValueRefOrAddDefault(dependencyGraph, mod.Name, out bool exists);
+                    if (!exists)
+                    {
+                        graph = [];
+                    }
+
+                    graph.Add(dep);
+                }
+            }
+
+        }
+
+        RiseCore.logger.LogDebug("Dependency Graph: ");
+        foreach (var graph in dependencyGraph)
+        {
+            RiseCore.logger.LogDebug("{modName}", graph.Key);
+            foreach (var dep in graph.Value)
+            {
+                RiseCore.logger.LogDebug("- {name}::{version}", dep.Name, dep.Version);
+            }
+        }
+
+        var modSpan = CollectionsMarshal.AsSpan(mods);
+
+        for (int i = modSpan.Length - 1; i >= 0; i -= 1)
+        {
+            var mod = modSpan[i];
+            if (!LoadMod(mod, mods, dependencyGraph, toLoadAfter, false).Check(out _, out LoadError err))
+            {
+                if (err is LoadError.Failure)
+                {
+                    mods.RemoveAt(i);
+                }
+                continue;
+            }
+
+            mods.RemoveAt(i);
+        }
+
+        modSpan = CollectionsMarshal.AsSpan(mods);
+
+        // excess mod to load after
+        for (int i = modSpan.Length - 1; i >= 0; i -= 1)
+        {
+            var mod = modSpan[i];
+            if (!LoadMod(mod, mods, dependencyGraph, toLoadAfter, true).Check(out _, out LoadError err))
+            {
+                if (err is LoadError.Delayed)
+                {
+                    continue;
+                }
+            }
+
+            mods.RemoveAt(i);
+        }
     }
 
     public bool CheckDependencyMetadata(ModuleMetadata metadata, bool storeError)
@@ -270,46 +334,82 @@ internal class ModuleManager
         return false;
     }
 
-    public bool CheckDependencies(ModuleMetadata metadata, out int requiredDependencies)
+    public Result<Unit, LoadError> LoadMod(
+        ModuleMetadata metadata, 
+        List<ModuleMetadata> mods,
+        Dictionary<string, List<ModuleMetadata>> dependencyGraph,
+        Dictionary<string, List<ModuleMetadata>> toLoadAfter,
+        bool ignoreOptional
+    )
     {
-        requiredDependencies = 0;
-        if (metadata.Dependencies != null)
+        foreach (var dep in metadata.Dependencies)
         {
-            foreach (var dep in metadata.Dependencies)
+            if (!CheckDependencyMetadata(dep, true))
             {
-                if (CheckDependencyMetadata(dep, true))
+                ref var graph = ref CollectionsMarshal.GetValueRefOrAddDefault(toLoadAfter, dep.Name, out bool exists);
+                if (!exists)
                 {
-                    continue;
+                    graph = [];
                 }
-                requiredDependencies += 1;
 
-                return false;
+                graph.Add(metadata);
+                return LoadError.Delayed;
+            }
+
+            if (dependencyGraph.TryGetValue(metadata.Name, out var list))
+            {
+                list.Remove(dep);
             }
         }
 
-        if (metadata.OptionalDependencies != null)
+        if (!ignoreOptional && metadata.OptionalDependencies is not null)
         {
             foreach (var dep in metadata.OptionalDependencies)
             {
-                if (CheckDependencyMetadata(dep, false))
+                if (!CheckDependencyMetadata(dep, false))
+                {
+                    ref var graph = ref CollectionsMarshal.GetValueRefOrAddDefault(toLoadAfter, dep.Name, out bool exists);
+                    if (!exists)
+                    {
+                        graph = [];
+                    }
+
+                    graph.Add(metadata);
+                    return LoadError.Delayed;
+                }
+
+
+                if (dependencyGraph.TryGetValue(metadata.Name, out var list))
+                {
+                    list.Remove(dep);
+                }
+            }
+        }
+
+
+        if (!LoadModSkipDependecies(metadata).Check(out var ok, out var error))
+        {
+            return error;
+        }
+
+        if (toLoadAfter.TryGetValue(metadata.Name, out var toLoad))
+        {
+            Console.WriteLine("ToLoadAfter: " + metadata.Name);
+            foreach (var mod in toLoad)
+            {
+                Console.WriteLine(mod.Name);
+                if (!LoadMod(mod, mods, dependencyGraph, toLoadAfter, false).Check(out _, out _))
                 {
                     continue;
                 }
 
-                return false;
+                mods.Remove(mod);
             }
-        }
-        return true;
-    }
 
-    public Result<Unit, LoadError> LoadMod(ModuleMetadata metadata, out int requiredDependencies)
-    {
-        if (!CheckDependencies(metadata, out requiredDependencies))
-        {
-            return LoadError.Delayed;
+            toLoadAfter.Remove(metadata.Name);
         }
 
-        return LoadModSkipDependecies(metadata);
+        return ok;
     }
 
     public Result<Unit, LoadError> LoadModSkipDependecies(ModuleMetadata metadata)
@@ -375,80 +475,8 @@ internal class ModuleManager
 
         InternalMods.Add(modResource);
         InternalModuleMetadatas.Add(metadata);
-        if (metadata.Tags != null)
-        {
-            foreach (var tag in metadata.Tags)
-            {
-                InternalTags.Add(tag);
-            }
-        }
-
 
         return new Unit();
-    }
-
-    private void LoadDelayedMods(List<ModDelayed> delayedMods)
-    {
-        List<ModDelayed> successfulLoad = [];
-        for (int i = 0; i < delayedMods.Count; i++)
-        {
-            var delayMod = delayedMods[i];
-            if (!LoadMod(delayMod.Metadata, out int requiredDependencies).IsError)
-            {
-                successfulLoad.Add(delayMod);
-            }
-
-            delayMod.RequiredCount = requiredDependencies;
-            delayedMods[i] = delayMod;
-        }
-
-        bool loadedAnother = successfulLoad.Count != 0;
-
-        foreach (var success in successfulLoad)
-        {
-            delayedMods.Remove(success);
-        }
-
-        // Loads another batch of mods that are delayed
-        if (loadedAnother)
-        {
-            LoadDelayedMods(delayedMods);
-            return;
-        }
-
-        delayedMods.Sort(new OptionalModDependencyOrder());
-
-        foreach (var delayedMod in delayedMods.ToList())
-        {
-            if (delayedMod.RequiredCount > 0)
-            {
-                // unfortunate mods that cannot be loaded in
-                if (!string.IsNullOrEmpty(delayedMod.Metadata.PathDirectory))
-                {
-                    CantLoad.Add(delayedMod.Metadata.PathDirectory);
-                }
-                else if (!string.IsNullOrEmpty(delayedMod.Metadata.PathZip))
-                {
-                    CantLoad.Add(delayedMod.Metadata.PathZip);
-                }
-
-                logger.LogError("Mod named '{modName}' has missing dependencies.", delayedMod.Metadata.Name);
-                ErrorPanel.StoreError($"'{delayedMod.Metadata.Name}' has missing dependencies.");
-            }
-            else
-            {
-                // Hey, we can load this one, dependency is not required!
-                LoadModSkipDependecies(delayedMod.Metadata);
-                loadedAnother = true;
-                delayedMods.Remove(delayedMod);
-                break;
-            }
-        }
-
-        if (loadedAnother)
-        {
-            LoadDelayedMods(delayedMods);
-        }
     }
 
     private Mod LoadAssembly(ModuleMetadata metadata, IModContent content, Assembly asm)
@@ -537,6 +565,11 @@ internal class ModuleManager
             EventsManager.ModInitialize.Raise(fortModule, fortModule.Meta);
         }
 
+        foreach (var api in awaitedAPIs)
+        {
+            api();
+        }
+
         EventsManager.ModLoadStateFinished.Raise(null, LoadState.Initialize);
 
         LogPatches();
@@ -582,26 +615,6 @@ internal class ModuleManager
             }
             return tags.Contains(tag);
         })];
-    }
-
-    internal string[] GetAllTags()
-    {
-        return [.. InternalTags];
-    }
-
-    internal string[]? GetTags(string modName)
-    {
-        string[]? tags = null;
-        foreach (var mod in InternalMods)
-        {
-            if (mod.Metadata.Name == modName)
-            {
-                tags = mod.Metadata.Tags;
-                break;
-            }
-        }
-
-        return tags;
     }
 
     internal static bool IsModDepends(ModuleMetadata mod, ModuleMetadata targetMod)

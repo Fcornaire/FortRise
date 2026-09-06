@@ -24,11 +24,6 @@ internal class ModInterop : IModInterop
         ProxyManager = proxyManager;
     }
 
-    public string[]? GetTags(string modName) => manager.GetTags(modName);
-    public string[] GetAllTags() => manager.GetAllTags();
-
-    public IReadOnlyList<IModResource> GetModsByTag(string tag) => manager.GetModsByTag(tag);
-
     public IModResource? GetMod(string tag) => manager.GetMod(tag);
 
     public IReadOnlyList<IModResource> GetModDependents() => manager.GetModDependents(metadata.Name);
@@ -89,5 +84,17 @@ internal class ModInterop : IModInterop
         mod.OnModRequestApi?.Invoke(metadata);
 
         return ProxyManager.ObtainProxy<string, T>(apiObject, modName, mod.Meta.Name);
+    }
+
+    public void AwaitApi<T>(string name, AwaitApiCallback<T> callback, Option<SemanticVersion> minimumVersion) where T : class
+    {
+        manager.awaitedAPIs.Add(() => 
+        {
+            var api = GetApi<T>(name, minimumVersion);
+            if (api is not null)
+            {
+                callback(api);
+            }
+        });
     }
 }

@@ -263,12 +263,6 @@ public class UIModToggler : CustomMenuState
             ModName = modName
         };
 
-
-        if (RiseCore.ModuleManager.CantLoad.Contains(modName))
-        {
-            return null;
-        }
-
         toggleable.SetCallbacks(() =>
         {
             toggleable.State = toggleable.State == "ON" ? "OFF" : "ON";

@@ -1,9 +1,29 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 
 namespace FortRise;
+
+public static class CollectionsExt 
+{
+    // Correct: Type parameter T belongs to the enclosing class
+    public static class ListAccessor<T>
+    {
+        [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "_items")]
+        public static extern ref T[] GetItems(List<T> list);
+    }
+
+    extension<T>(List<T> items)
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public T[] AsArray()
+        {
+            return ListAccessor<T>.GetItems(items);
+        }
+    }
+}
 
 public static class TaskHelper 
 {
