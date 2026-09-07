@@ -432,7 +432,7 @@ internal class ModuleManager
                 metadata.AssemblyLoadContext = new ModAssemblyLoadContext(metadata);
 
                 using var dll = dllMeta.ExtractStream();
-                asm = Relinker.LoadModAssembly(metadata, metadata.DLL, dll);
+                asm = Resolver.LoadModAssembly(metadata, metadata.DLL, dll);
             }
         }
         else if (!string.IsNullOrEmpty(metadata.PathDirectory))
@@ -448,7 +448,7 @@ internal class ModuleManager
                 metadata.AssemblyLoadContext = new ModAssemblyLoadContext(metadata);
 
                 using var stream = File.OpenRead(fullDllPath);
-                asm = Relinker.LoadModAssembly(metadata, metadata.DLL, stream);
+                asm = Resolver.LoadModAssembly(metadata, metadata.DLL, stream);
             }
         }
         else
@@ -519,7 +519,7 @@ internal class ModuleManager
                 if (File.Exists(fullDllPath))
                 {
                     using var stream = File.OpenRead(fullDllPath);
-                    var asm = Relinker.LoadModAssembly(metadata, metadata.DLL, stream);
+                    var asm = Resolver.LoadModAssembly(metadata, metadata.DLL, stream);
 
                     LoadAssembly(metadata, content, asm);
                 }

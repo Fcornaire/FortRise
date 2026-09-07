@@ -94,20 +94,10 @@ internal sealed class ModAssemblyLoadContext : AssemblyLoadContext, IAssemblyRes
                 {
                     using var asmFS = File.OpenRead(path);
 
-                    asm = Relinker.LoadModAssembly(
+                    asm = Resolver.LoadModAssembly(
                         Metadata, 
                         path, 
                         asmFS);
-
-                    if (asm == null)
-                    {
-                        // let's try our best to load the dependency
-                        asmFS.Seek(0, SeekOrigin.Begin);
-                        asm = Relinker.FakeRelink(
-                            Metadata,
-                            Path.GetFileNameWithoutExtension(path),
-                            asmFS);
-                    }
                 }
             }
             else if (!string.IsNullOrEmpty(Metadata.PathZip))
@@ -121,19 +111,10 @@ internal sealed class ModAssemblyLoadContext : AssemblyLoadContext, IAssemblyRes
                 {
                     using var dllStream = entry.ExtractStream();
 
-                    asm = Relinker.LoadModAssembly(
+                    asm = Resolver.LoadModAssembly(
                         Metadata, 
                         path, 
                         dllStream);
-                    if (asm == null)
-                    {
-                        // let's try our best to load the dependency
-                        dllStream.Seek(0, SeekOrigin.Begin);
-                        asm = Relinker.FakeRelink(
-                            Metadata,
-                            Path.GetFileNameWithoutExtension(path),
-                            dllStream);
-                    }
                 }
             }
             else 
