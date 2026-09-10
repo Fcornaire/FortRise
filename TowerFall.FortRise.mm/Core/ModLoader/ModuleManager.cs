@@ -53,7 +53,6 @@ internal class ModuleManager
     public static ModuleManager Instance { get; private set; }
     internal List<Mod> InternalFortModules = [];
     internal List<IModResource> InternalMods = [];
-    internal List<Action> awaitedAPIs = [];
 
     internal HashSet<ModuleMetadata> InternalModuleMetadatas = [];
 
@@ -570,11 +569,6 @@ internal class ModuleManager
         {
             fortModule.OnInitialize?.Invoke(fortModule.Context);
             EventsManager.ModInitialize.Raise(fortModule, fortModule.Meta);
-        }
-
-        foreach (var api in awaitedAPIs)
-        {
-            api();
         }
 
         EventsManager.ModLoadStateFinished.Raise(null, LoadState.Initialize);

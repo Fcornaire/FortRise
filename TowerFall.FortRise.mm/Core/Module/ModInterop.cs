@@ -88,13 +88,44 @@ internal class ModInterop : IModInterop
 
     public void AwaitApi<T>(string name, AwaitApiCallback<T> callback, Option<SemanticVersion> minimumVersion) where T : class
     {
-        manager.awaitedAPIs.Add(() => 
+        if (GetApi<T>(name, minimumVersion) is { } api)
         {
-            var api = GetApi<T>(name, minimumVersion);
-            if (api is not null)
+            callback(api);
+            return;
+        }
+
+        if (manager.State == LoadState.Ready)
+        {
+            return;
+        }
+
+        var onModInitialize = new NullableRef<EventHandler<ModuleMetadata>>();
+        var onModLoadStateFinished = new NullableRef<EventHandler<LoadState>>();
+
+        onModInitialize.Value = (_, meta) => 
+        {
+            if (meta.Name != name)
             {
-                callback(api);
+                return;
             }
-        });
+
+            ModEventsManager.Instance.ModInitialize.Remove(metadata, onModInitialize.Value);
+            ModEventsManager.Instance.ModLoadStateFinished.Remove(metadata, onModLoadStateFinished.Value);
+            callback(GetApi<T>(name, minimumVersion)!);
+        };
+
+        onModLoadStateFinished.Value = (_, state) => 
+        {
+            if (state != LoadState.Ready)
+            {
+                return;
+            }
+
+            ModEventsManager.Instance.ModInitialize.Remove(metadata, onModInitialize.Value);
+            ModEventsManager.Instance.ModLoadStateFinished.Remove(metadata, onModLoadStateFinished.Value);
+        };
+
+        ModEventsManager.Instance.ModInitialize.Add(metadata, onModInitialize.Value);
+        ModEventsManager.Instance.ModLoadStateFinished.Add(metadata, onModLoadStateFinished.Value);
     }
 }

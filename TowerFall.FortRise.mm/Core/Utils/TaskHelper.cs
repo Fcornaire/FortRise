@@ -8,7 +8,6 @@ namespace FortRise;
 
 public static class CollectionsExt 
 {
-    // Correct: Type parameter T belongs to the enclosing class
     public static class ListAccessor<T>
     {
         [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "_items")]

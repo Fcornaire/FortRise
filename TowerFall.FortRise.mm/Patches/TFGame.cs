@@ -532,6 +532,9 @@ namespace TowerFall
             {
                 ErrorPanel.Show = true;
             }
+
+
+            ModEventsManager.Instance.ModLoadStateFinished.Raise(null, LoadState.Ready);
             MainMenu.PlayMenuMusic();
             ConsoleEnabled = SaveData.Instance.Options.DevConsole;
             if (SaveData.Instance.Unlocks.Ascension)
