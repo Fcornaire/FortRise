@@ -13,7 +13,9 @@ public class FileResourceInfo : ResourceInfo
         get
         {
             if (!File.Exists(FullPath))
+            {
                 return null;
+            }
             return File.OpenRead(FullPath);
         }
     }

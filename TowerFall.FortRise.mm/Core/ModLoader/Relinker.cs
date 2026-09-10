@@ -1,6 +1,5 @@
 using System;
 using System.IO;
-using System.IO.Compression;
 using System.Reflection;
 using Microsoft.Extensions.Logging;
 
@@ -8,12 +7,12 @@ namespace FortRise;
 
 internal static class Resolver
 {
-    public static Assembly LoadModAssembly(ModuleMetadata meta, string asmDLL, Stream stream) 
+    public static Assembly LoadModAssembly(IModResource modResource, string asmDLL, Stream stream) 
     {
-        return LoadAssembly(meta, Path.GetFileNameWithoutExtension(asmDLL), stream);
+        return LoadAssembly(modResource, Path.GetFileNameWithoutExtension(asmDLL), stream);
     }
 
-    public static Assembly LoadAssembly(ModuleMetadata meta, ReadOnlySpan<char> name, Stream stream)
+    public static Assembly LoadAssembly(IModResource modResource, ReadOnlySpan<char> name, Stream stream)
     {
         Span<char> asmName = stackalloc char[name.Length];
         name.Replace(asmName, ' ', '_');
@@ -24,7 +23,7 @@ internal static class Resolver
             Directory.CreateDirectory(dirPath);
         }
 
-        var cachedPath = Path.Combine(dirPath, $"{asmName}.{meta.Name}.dll");
+        var cachedPath = Path.Combine(dirPath, $"{asmName}.{modResource.Metadata.Name}.dll");
         var cachedChecksumPath = string.Concat(cachedPath.AsSpan(0, cachedPath.Length - 4), ".sum");
 
         var checksums = new string[2];
@@ -37,19 +36,19 @@ internal static class Resolver
         {
             RiseCore.logger.LogInformation(
                 "[Resolver] Loading cached assembly for {meta} - {asm}", 
-                meta, 
+                modResource.Metadata, 
                 new string(asmName)
             );
 
             try 
             {
-                return meta.AssemblyLoadContext.LoadRelinkedAssembly(cachedPath);
+                return modResource.Metadata.AssemblyLoadContext.LoadRelinkedAssembly(cachedPath);
             }
             catch (Exception e) 
             {
                 RiseCore.logger.LogError(
                     "[Resolver] Failed Loading {meta} - {asm}", 
-                    meta, 
+                    modResource.Metadata, 
                     new string(asmName));
 
                 RiseCore.logger.LogError("[Resolver] Exception: {exception}", e);
@@ -58,7 +57,7 @@ internal static class Resolver
         }
 
         var symbolPath = $"{name}.pdb"; 
-        var symbolStream = OpenSymbol(meta, symbolPath);
+        using var symbolStream = OpenSymbol(modResource, symbolPath);
         var cachedSymbolPath = Path.ChangeExtension(cachedPath, "pdb");
 
         if (symbolStream is not null)
@@ -82,13 +81,13 @@ internal static class Resolver
             
             File.WriteAllLines(cachedChecksumPath, checksums);
 
-            return meta.AssemblyLoadContext.LoadRelinkedAssembly(cachedPath);
+            return modResource.Metadata.AssemblyLoadContext.LoadRelinkedAssembly(cachedPath);
         }
         catch (Exception e) 
         {
             RiseCore.logger.LogError(
                 "[Resolver] Failed Loading {meta} - {asm}", 
-                meta, 
+                modResource.Metadata, 
                 new string(asmName));
 
             RiseCore.logger.LogError("[Resolver] Exception: {exception}", e);
@@ -96,29 +95,13 @@ internal static class Resolver
         }
     }
 
-    private static Stream OpenSymbol(ModuleMetadata metadata, string pdbFile) 
+    private static Stream OpenSymbol(IModResource modResource, string pdbFile) 
     {
-        if (!string.IsNullOrEmpty(metadata.PathZip)) 
+        if (modResource.OwnedResources.TryGetValue(pdbFile, out var pdb))
         {
-            using var zipFile = ZipFile.OpenRead(metadata.PathZip);
-            foreach (var entry in zipFile.Entries) 
-            {
-                if (!pdbFile.Contains(entry.FullName))
-                {
-                    continue;
-                }
+            return pdb.Stream;
+        }
 
-                return entry.ExtractStream();
-            }
-        }
-        if (!string.IsNullOrEmpty(metadata.PathDirectory)) 
-        {
-            var pdbPath = Path.Combine(metadata.PathDirectory, pdbFile);
-            if (File.Exists(pdbPath)) 
-            {
-                return File.OpenRead(pdbPath);
-            }
-        }
         return null;
     }
 

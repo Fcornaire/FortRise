@@ -28,7 +28,9 @@ public abstract class ModResource : IModResource
         Logger.Verbose("[RESOURCE] Loaded On:" + rootPath);
         Logger.Verbose("[RESOURCE] Loaded:" + path);
         if (Resources.ContainsKey(path))
+        {
             return;
+        }
 
 
         Resources.Add(path, resource);

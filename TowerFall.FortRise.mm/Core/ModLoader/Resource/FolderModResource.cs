@@ -16,6 +16,7 @@ public class FolderModResource : ModResource
         var rootFolder = new FileResourceInfo(this, "", FolderDirectory + '/');
         var files = Directory.GetFiles(FolderDirectory);
         Array.Sort(files);
+
         for (int i = 0; i < files.Length; i++)
         {
             var filePath = files[i].Replace('\\', '/');
@@ -27,6 +28,7 @@ public class FolderModResource : ModResource
         }
         var folders = Directory.GetDirectories(FolderDirectory);
         Array.Sort(folders);
+
         foreach (var folder in folders)
         {
             var fixedFolder = folder.Replace('\\', '/');

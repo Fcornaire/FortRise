@@ -1,20 +1,24 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.IO.Compression;
 using System.Linq;
-using System.Text;
 
 namespace FortRise;
 
 public class ZipModResource : ModResource
 {
-    private static readonly char[] SplitSeparator = ['/'];
     public ZipArchive Zip;
+    public string Root;
 
 
     public ZipModResource(ModuleMetadata metadata, IModContent content) : base(metadata, content)
     {
+        Zip = ZipFile.OpenRead(metadata.PathZip);
+    }
+
+    public ZipModResource(ModuleMetadata metadata, IModContent content, string root) : base(metadata, content)
+    {
+        Root = root;
         Zip = ZipFile.OpenRead(metadata.PathZip);
     }
 
@@ -26,72 +30,130 @@ public class ZipModResource : ModResource
 
     public override void Lookup(string prefix)
     {
-        var rootFolder = new ZipResourceInfo(this, "", prefix + '/', null);
-        var folders = new Dictionary<string, ZipResourceInfo>();
+        Root = ResolveRoot();
+        var rootPrefix = !string.IsNullOrEmpty(Root) ? Root.TrimEnd('/') + "/" : string.Empty;
+
+        var rootDirectory = new ZipResourceInfo(this, "", prefix + '/', null);
+        var directories = new Dictionary<string, ZipResourceInfo>();
 
         var entries = Zip.Entries.OrderBy(f => f.FullName);
 
         foreach (var entry in entries)
         {
-            var fileName = entry.FullName.Replace('\\', '/');
+            var rawPath = entry.FullName.Replace('\\', '/');
+            var fileName = rawPath;
+
+            if (!string.IsNullOrEmpty(rootPrefix))
+            {
+                if (fileName.StartsWith(rootPrefix))
+                {
+                    fileName = rawPath[rootPrefix.Length..];
+                }
+                else 
+                {
+                    continue;
+                }
+            }
+
+            if (string.IsNullOrEmpty(fileName))
+            {
+                continue;
+            }
 
             ZipResourceInfo zipResource;
             if (entry.IsEntryDirectory)
             {
-                var file = fileName[..^1];
+                var directory = fileName[..^1];
 
-                zipResource = new ZipResourceInfo(this, file, prefix + file, entry);
-                Add(file, zipResource);
+                zipResource = new ZipResourceInfo(this, directory, prefix + directory, entry);
+                Add(directory, zipResource);
+                directories[directory] = zipResource;
 
-                folders.Add(file, zipResource);
-                var split = file.Split(SplitSeparator);
-                Array.Resize(ref split, split.Length - 1);
-                var newPath = CombineAllPath(split);
-                if (folders.TryGetValue(newPath, out var resource))
-                {
-                    resource.Childrens.Add(zipResource);
-                }
+                LinkToParent(directory, zipResource, directories, rootDirectory);
             }
             else
             {
                 zipResource = new ZipResourceInfo(this, fileName, prefix + fileName, entry);
                 Add(fileName, zipResource);
-                if (folders.TryGetValue(Path.GetDirectoryName(fileName).Replace('\\', '/'), out var resource))
-                {
-                    resource.Childrens.Add(zipResource);
-                }
-            }
 
-            var span = fileName.AsSpan();
-            int slashesCount = 0;
-
-            for (int i = 0; i < span.Length && slashesCount != 1; i++)
-            {
-                if (span[i] == '/')
-                {
-                    slashesCount += 1;
-                }
-            }
-
-            if (slashesCount != 1)
-            {
-                rootFolder.Childrens.Add(zipResource);
+                LinkToParent(fileName, zipResource, directories, rootDirectory);
             }
         }
 
-        Add("", rootFolder);
+        Add("", rootDirectory);
     }
 
-    private static string CombineAllPath(string[] paths)
+    private static void LinkToParent(
+        string path,
+        ZipResourceInfo resource,
+        Dictionary<string, ZipResourceInfo> directories,
+        ZipResourceInfo rootDirectory
+    )
     {
-        var sb = new StringBuilder();
-        for (int i = 0; i < paths.Length; i++)
+        int lastSlash = path.LastIndexOf('/');
+        string parentPath = lastSlash > 0 ? path[..lastSlash] : string.Empty;
+
+        if (string.IsNullOrEmpty(parentPath))
         {
-            var path = paths[i];
-            sb.Append(path);
-            if (i != paths.Length - 1)
-                sb.Append('/');
+            rootDirectory.Childrens.Add(resource);
         }
-        return sb.ToString();
+        else if (directories.TryGetValue(parentPath, out var parentDirectory))
+        {
+            parentDirectory.Childrens.Add(resource);
+        }
+    }
+
+    private string ResolveRoot()
+    {
+        if (!string.IsNullOrEmpty(Root))
+        {
+            return Root.TrimEnd('/');
+        }
+
+        bool hasRootMeta = Zip.Entries.Any(e =>
+            e.FullName.Replace('\\', '/').Equals("meta.json", StringComparison.OrdinalIgnoreCase));
+
+        if (hasRootMeta)
+        {
+            return string.Empty;
+        }
+
+        var metaEntry = Zip.Entries.FirstOrDefault(e => 
+            e.FullName.Replace('\\', '/').EndsWith("/meta.json", StringComparison.OrdinalIgnoreCase));
+
+        if (metaEntry is not null)
+        {
+            var normalized = metaEntry.FullName.Replace('\\', '/');
+            var parts = normalized.Split('/');
+            if (parts.Length == 2)
+            {
+                return parts[0];
+            }
+        }
+
+        string commonRoot = null;
+        foreach (var entry in Zip.Entries)
+        {
+            var path = entry.FullName.Replace('\\', '/').TrimStart('/');
+            if (string.IsNullOrEmpty(path)) { continue; }
+
+            int slashIndex = path.IndexOf('/');
+            if (slashIndex == -1)
+            {
+                return string.Empty;
+            }
+
+            string topDir = path[..slashIndex];
+            if (commonRoot is null)
+            {
+                commonRoot = topDir;
+            }
+            else if (!string.Equals(commonRoot, topDir))
+            {
+                return string.Empty;
+            }
+        }
+
+        return commonRoot ?? "";
     }
 }

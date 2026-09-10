@@ -37,9 +37,7 @@ public partial class ModuleMetadata : IEquatable<ModuleMetadata>
     public SemanticVersion Version { get; set; }
     public string DisplayName { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
-    public string Author { get; set; } = string.Empty;
     public string DLL { get; set; } = string.Empty;
-    public string[]? Tags { get; set; } = null;
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public ModulePriority Priority { get; set; } = ModulePriority.Normal;
     [JsonConverter(typeof(JsonDependencyMetadataConverter))]
@@ -50,6 +48,7 @@ public partial class ModuleMetadata : IEquatable<ModuleMetadata>
 
     public string PathDirectory = string.Empty;
     public string PathZip = string.Empty;
+    public string RootZip = string.Empty;
     [JsonIgnore]
     internal ModAssemblyLoadContext? AssemblyLoadContext { get; set; } = null;
 
@@ -64,7 +63,7 @@ public partial class ModuleMetadata : IEquatable<ModuleMetadata>
 
     public override string ToString()
     {
-        return $"Metadata: {Name} by {Author} {Version}";
+        return $"Metadata: {Name} {Version}";
     }
 
 
@@ -123,7 +122,7 @@ public partial class ModuleMetadata : IEquatable<ModuleMetadata>
         {
             return Result<ModuleMetadata, string>.Error($"Json failed to parse on directory: '{dirPath}'");
         }
-        var regex = GeneratedNameRegex();
+        var regex = NameValidationPatternRegex();
 
         if (!regex.IsMatch(metadata.Name))
         {
@@ -192,7 +191,7 @@ public partial class ModuleMetadata : IEquatable<ModuleMetadata>
     }
 
     [GeneratedRegex(@"^[\w\\s.]+$")]
-    private static partial Regex GeneratedNameRegex();
+    private static partial Regex NameValidationPatternRegex();
 }
 
 internal sealed class JsonDependencyMetadataConverter : JsonConverter<ModuleMetadata[]>

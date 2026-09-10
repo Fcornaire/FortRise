@@ -169,7 +169,7 @@ internal class ModuleManager
             var meta = LoadZip(file);
             if (meta is not null)
             {
-                mods.Add(meta);
+                mods.AddRange(meta);
             }
 
             file = ref Unsafe.Add(ref file, 1);
@@ -198,28 +198,42 @@ internal class ModuleManager
         return moduleMetadata;
     }
 
-    private static ModuleMetadata LoadZip(string file)
+    private static List<ModuleMetadata> LoadZip(string file)
     {
+        var modules = new List<ModuleMetadata>();
         using var zipFile = ZipFile.OpenRead(file);
 
-        string metaFile = "meta.json";
-        var metaZip = zipFile.GetEntry(metaFile);
-        if (metaZip == null)
+        foreach (var entry in zipFile.Entries)
         {
-            return null;
+            var normalizedPath = entry.FullName.Replace('\\', '/');
+
+            if (IsMetaFile(normalizedPath))
+            {
+                int lastSlashIndex = normalizedPath.LastIndexOf('/');
+                var rootZip = lastSlashIndex >= 0 ? normalizedPath[..lastSlashIndex] : string.Empty;
+
+                using var memStream = entry.ExtractStream();
+                var result = ModuleMetadata.ParseMetadata(file, memStream, true);
+
+                if (result.Check(out var metadata, out string error))
+                {
+                    metadata.RootZip = rootZip;
+                    modules.Add(metadata);
+                }
+                else 
+                {
+                    ErrorPanel.StoreError(error);
+                    RiseCore.logger.LogError("{error}", error);
+                }
+            }
         }
 
-        using var memStream = metaZip.ExtractStream();
+        return modules;
 
-        var result = ModuleMetadata.ParseMetadata(file, memStream, true);
-        if (!result.Check(out ModuleMetadata moduleMetadata, out string error))
+        static bool IsMetaFile(string path)
         {
-            ErrorPanel.StoreError(error);
-            Logger.Error(error);
-            return null;
+            return path.Equals("meta.json") || path.EndsWith("/meta.json");
         }
-
-        return moduleMetadata;
     }
 
     private void LoadMods(List<ModuleMetadata> mods)
@@ -394,10 +408,8 @@ internal class ModuleManager
 
         if (toLoadAfter.TryGetValue(metadata.Name, out var toLoad))
         {
-            Console.WriteLine("ToLoadAfter: " + metadata.Name);
             foreach (var mod in toLoad)
             {
-                Console.WriteLine(mod.Name);
                 if (!LoadMod(mod, mods, dependencyGraph, toLoadAfter, false).Check(out _, out _))
                 {
                     continue;
@@ -415,47 +427,40 @@ internal class ModuleManager
     public Result<Unit, LoadError> LoadModSkipDependecies(ModuleMetadata metadata)
     {
         Assembly asm = null;
+        IModContent content = new ModContent(metadata);
         IModResource modResource;
-        IModContent content;
         if (!string.IsNullOrEmpty(metadata.PathZip))
         {
-            content = new ModContent(metadata);
-            modResource = new ZipModResource(metadata, content);
-
-            RiseCore.ResourceTree.AddMod(metadata, modResource);
-
-            using var zip = ZipFile.OpenRead(metadata.PathZip);
-            var dllPath = metadata.DLL.Replace('\\', '/');
-            var dllMeta = zip.GetEntry(dllPath);
-            if (dllMeta != null)
+            if (!string.IsNullOrEmpty(metadata.RootZip))
             {
-                metadata.AssemblyLoadContext = new ModAssemblyLoadContext(metadata);
-
-                using var dll = dllMeta.ExtractStream();
-                asm = Resolver.LoadModAssembly(metadata, metadata.DLL, dll);
+                modResource = new ZipModResource(metadata, content, metadata.RootZip);
+            }
+            else 
+            {
+                modResource = new ZipModResource(metadata, content);
             }
         }
         else if (!string.IsNullOrEmpty(metadata.PathDirectory))
         {
-            content = new ModContent(metadata);
             modResource = new FolderModResource(metadata, content);
-
-            RiseCore.ResourceTree.AddMod(metadata, modResource);
-            var fullDllPath = Path.Combine(metadata.PathDirectory, metadata.DLL);
-
-            if (File.Exists(fullDllPath))
-            {
-                metadata.AssemblyLoadContext = new ModAssemblyLoadContext(metadata);
-
-                using var stream = File.OpenRead(fullDllPath);
-                asm = Resolver.LoadModAssembly(metadata, metadata.DLL, stream);
-            }
         }
         else
         {
             logger.LogError("Mod named: '{modName}' not found!", metadata.Name);
             ErrorPanel.StoreError($"'{metadata.Name}' not found!");
             return LoadError.Failure;
+        }
+
+        RiseCore.ResourceTree.AddMod(metadata, modResource);
+
+        if (!string.IsNullOrEmpty(metadata.DLL))
+        {
+            metadata.AssemblyLoadContext = new ModAssemblyLoadContext(metadata);
+
+            using var stream = modResource.GetResource(metadata.DLL)?.Stream
+                ?? throw new FileNotFoundException($"{metadata.DLL} not found on mod: '{metadata}'");
+
+            asm = Resolver.LoadModAssembly(modResource, metadata.DLL, stream);
         }
 
         NameToMod.Add(metadata.Name, modResource);
@@ -514,12 +519,14 @@ internal class ModuleManager
                 GC.Collect();
                 GC.WaitForPendingFinalizers();
 
+                var modResource = RiseCore.ModuleManager.GetMod(metadata.Name);
+
                 var fullDllPath = Path.Combine(metadata.PathDirectory, metadata.DLL);
 
                 if (File.Exists(fullDllPath))
                 {
                     using var stream = File.OpenRead(fullDllPath);
-                    var asm = Resolver.LoadModAssembly(metadata, metadata.DLL, stream);
+                    var asm = Resolver.LoadModAssembly(modResource, metadata.DLL, stream);
 
                     LoadAssembly(metadata, content, asm);
                 }
@@ -602,19 +609,6 @@ internal class ModuleManager
         }
 
         return null;
-    }
-
-    internal IReadOnlyList<IModResource> GetModsByTag(string tag)
-    {
-        return [.. InternalMods.Where(x =>
-        {
-            var tags = x.Metadata.Tags;
-            if (tags is null)
-            {
-                return false;
-            }
-            return tags.Contains(tag);
-        })];
     }
 
     internal static bool IsModDepends(ModuleMetadata mod, ModuleMetadata targetMod)

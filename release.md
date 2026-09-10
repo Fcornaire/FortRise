@@ -1,3 +1,12 @@
+# 5.5.0-beta.1
++ Added an ability to load multiple mods inside of a zip file.
++ Improved load times for every mods load.
++ Improved dependency checking with proper dependency graph.
++ Fixed ModuleMetadata.Hash cannot find the DLL for directory mods.
++ Fixed native library loading multiple times for every reused.
+- Removed Relinker.
+- Removed Tags.
+
 # 5.4.0
 + Added descriptions for all option buttons in settings. #20
 + Added OptionDescriptionBox. #20

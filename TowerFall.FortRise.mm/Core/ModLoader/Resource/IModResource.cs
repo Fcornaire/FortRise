@@ -11,4 +11,10 @@ public interface IModResource : IDisposable
     Dictionary<string, IResourceInfo> OwnedResources { get; }
 
     internal void Lookup(string prefix);
+
+    IResourceInfo? GetResource(string name)
+    {
+        OwnedResources.TryGetValue(name, out var file);
+        return file;
+    }
 }

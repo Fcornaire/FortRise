@@ -385,7 +385,7 @@ public static partial class RiseCore
         {
             return GetChecksum(meta.PathZip);
         }
-        return GetChecksum(meta.DLL);
+        return GetChecksum(Path.Combine(meta.PathDirectory, meta.DLL));
     }
 
     // https://github.com/EverestAPI/Everest/blob/dev/Celeste.Mod.mm/Mod/Everest/Everest.cs
