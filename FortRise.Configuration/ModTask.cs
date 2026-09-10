@@ -164,7 +164,7 @@ public sealed class ModTask : Task
 
             if (!TryMetadataRewrite(file, out string? meta))
             {
-                throw new Exception("Cannot automatically deploy the mod!");
+                throw new Exception("Cannot proceed as there's an invalid field in 'meta.json'");
             }
 
             if (meta != null)
@@ -198,7 +198,7 @@ public sealed class ModTask : Task
 
             if (!TryMetadataRewrite(entry, out string? meta))
             {
-                throw new Exception("Cannot proceed as 'meta.json' not found!");
+                throw new Exception("Cannot proceed as there's an invalid field in 'meta.json'");
             }
 
             if (entry.Directory)
@@ -250,14 +250,24 @@ public sealed class ModTask : Task
             meta["Name"] = ModName;
         }
 
-        if (!meta.TryGetValue("Version", out object? obj))
+        string version;
+
+        if (meta.TryGetValue("Version", out object? obj))
         {
-            Log.LogError($"The '{readFile.Relative}' file does missing a required 'Version' field.");
-            return false;
+            var v = ((JsonElement)obj).GetString();
+            if (v is null)
+            {
+                Log.LogError($"The Version cannot be specified.");
+                return false;
+            }
+
+            version = v;
         }
-
-        string? version = ((JsonElement)obj).GetString();
-
+        else 
+        {
+            meta["Version"] = ModVersion;
+            version = ModVersion;
+        }
 
         if (version!.Trim() != ModVersion.Trim())
         {

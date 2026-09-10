@@ -1,5 +1,14 @@
 <Project>
 	<UsingTask TaskName="FortRise.Configuration.ModTask" AssemblyFile="FortRise.Configuration.dll" />
+    <UsingTask TaskName="PublicizeAssemblies" AssemblyFile="$(MSBuildThisFileDirectory)netstandard2.0\Publicizer.dll" />
+
+    <PropertyGroup>
+      <PublicizeAssembliesDependsOn>ResolveAssemblyReferences</PublicizeAssembliesDependsOn>
+      <PublicizeBeforeTargets>ResolveReferences</PublicizeBeforeTargets>
+      <PublicizerRuntimeStrategies>Unsafe;IgnoresAccessChecksTo</PublicizerRuntimeStrategies>
+      <PublicizeAll>false</PublicizeAll>
+      <PublicizerClearCacheOnClean>false</PublicizerClearCacheOnClean>
+    </PropertyGroup>
 
     <PropertyGroup>
         <DebugSymbols>true</DebugSymbols>
@@ -13,7 +22,9 @@
         <ModEnablePublish Condition="'$(ModEnablePublish)' == ''">true</ModEnablePublish>
         <ModEnableZip Condition="'$(ModEnableZip)' == '' And '$(Configuration)' == 'Release'">true</ModEnableZip>
         <ModEnableZip Condition="'$(ModEnableZip)' == ''">false</ModEnableZip>
+        <TFPublic>true</TFPublic>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <PublicizerClearCacheOnClean>true</PublicizerClearCacheOnClean>
     </PropertyGroup>
 
     <!-- Properties for knowing where th is the ModLoader -->
@@ -48,6 +59,13 @@
         <ModPublishPath Condition="'$(ModPublishPath)' == ''">$(ModLoaderPath)\Mods</ModPublishPath>
     </PropertyGroup>
 
+    
+    <ItemGroup Condition="$(TFPublic)">
+      <AssemblyAttribute Include="System.Runtime.CompilerServices.IgnoresAccessChecksToAttribute">
+        <_Parameter1>TowerFall</_Parameter1>
+      </AssemblyAttribute>
+    </ItemGroup>
+
 	<ItemGroup>
         <Reference Include="0Harmony" Private="False" HintPath="$(ModLoaderPath)\0Harmony.dll" />
         <Reference Include="TowerFall">
@@ -72,6 +90,11 @@
         </Reference>
 	</ItemGroup>
 
+    <ItemGroup>
+        <Publicize Include="TowerFall.Patch" MemberPattern="^(TowerFall|Monocle)\..*" IncludeCompilerGeneratedMembers="false" IncludeVirtualMembers="false" 
+            Condition="$(TFPublic)"/>
+    </ItemGroup>
+
 	<Target Name="ModDeployAndZip" AfterTargets="Build">
 		<FortRise.Configuration.ModTask
 				ModName="$(ModName)"
@@ -85,4 +108,6 @@
 		/>
 	</Target>
 
+
+    <Import Project="$(MSBuildThisFileDirectory)Krafs.Publicizer.targets" />
 </Project>
