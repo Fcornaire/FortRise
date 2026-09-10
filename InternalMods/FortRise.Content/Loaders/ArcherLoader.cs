@@ -147,44 +147,54 @@ internal static class ArcherLoader
         if (element.HasChild("Hair"))
         {
             var hairElm = element["Hair"]!;
-            Vector2 offset = new Vector2(0, 0);
-            if (hairElm.HasChild("Offset"))
+            var value = hairElm.InnerText.Trim().ToLowerInvariant();
+            if (value != "false")
             {
-                offset.X = hairElm["Offset"].AttrInt("x");
-                offset.Y = hairElm["Offset"].AttrInt("y");
-            }
+                Vector2 offset = new Vector2(0, 0);
+                if (hairElm.HasChild("Offset"))
+                {
+                    offset.X = hairElm["Offset"].AttrInt("x");
+                    offset.Y = hairElm["Offset"].AttrInt("y");
+                }
 
-            Vector2 duckingOffset = new Vector2(0, 0);
-            if (hairElm.HasChild("DuckingOffset"))
-            {
-                offset.X = hairElm["DuckingOffset"].AttrInt("x");
-                offset.Y = hairElm["DuckingOffset"].AttrInt("y");
-            }
+                Vector2 duckingOffset = new Vector2(0, 0);
+                if (hairElm.HasChild("DuckingOffset"))
+                {
+                    offset.X = hairElm["DuckingOffset"].AttrInt("x");
+                    offset.Y = hairElm["DuckingOffset"].AttrInt("y");
+                }
 
-            ISubtextureEntry? texture = null;
-            if (hairElm.HasChild("Texture"))
-            {
-                texture = content.LoadTexture(registry, hairElm["Texture"], SubtextureAtlasDestination.Atlas);
-            }
+                ISubtextureEntry? texture = null;
+                if (hairElm.HasChild("Texture"))
+                {
+                    texture = content.LoadTexture(
+                        registry, 
+                        hairElm["Texture"], 
+                        SubtextureAtlasDestination.Atlas);
+                }
 
-            ISubtextureEntry? textureEnd = null;
-            if (hairElm.HasChild("TextureEnd"))
-            {
-                textureEnd = content.LoadTexture(registry, hairElm["TextureEnd"], SubtextureAtlasDestination.Atlas);
-            }
+                ISubtextureEntry? textureEnd = null;
+                if (hairElm.HasChild("TextureEnd"))
+                {
+                    textureEnd = content.LoadTexture(
+                        registry, 
+                        hairElm["TextureEnd"], 
+                        SubtextureAtlasDestination.Atlas);
+                }
 
-            hairInfo = new HairInfo()
-            {
-                Texture = texture,
-                TextureEnd = textureEnd,
-                Offset = offset,
-                DuckingOffset = duckingOffset,
-                ShowOnHat = hairElm.ChildBool("ShowOnHat", false),
-                AddLinks = hairElm.ChildInt("AddLinks", 0),
-                AddLinkDistance = hairElm.ChildFloat("AddLinkDistance", 0),
-                Color = hairElm.ChildHexColor("Color", Color.White),
-                OutlineColor = hairElm.ChildHexColor("OutlineColor", Color.Black),
-            };
+                hairInfo = new HairInfo()
+                {
+                    Texture = texture,
+                    TextureEnd = textureEnd,
+                    Offset = offset,
+                    DuckingOffset = duckingOffset,
+                    ShowOnHat = hairElm.ChildBool("ShowOnHat", false),
+                    AddLinks = hairElm.ChildInt("AddLinks", 0),
+                    AddLinkDistance = hairElm.ChildFloat("AddLinkDistance", 0),
+                    Color = hairElm.ChildHexColor("Color", Color.White),
+                    OutlineColor = hairElm.ChildHexColor("OutlineColor", Color.Black),
+                };
+            }
         }
         else
         {
