@@ -261,12 +261,12 @@ public static class patch_Music
 
     public static IMusicSystem GetMusicSystemFromExtension(IResourceInfo info) 
     {
-        if (info.ResourceType == typeof(RiseCore.ResourceTypeOggFile))
+        if (info.ResourceType == typeof(ResourceTypeOggFile))
         {
             return AudioSystems[".ogg"];
         }
 
-        if (info.ResourceType == typeof(RiseCore.ResourceTypeWavFile))
+        if (info.ResourceType == typeof(ResourceTypeWavFile))
         {
             return AudioSystems[".wav"];
         }

@@ -250,7 +250,7 @@ internal sealed class ModAssemblyLoadContext : AssemblyLoadContext, IAssemblyRes
                 continue;
             }
             if (entry.Value.ResourceType 
-                == typeof(RiseCore.ResourceTypeFolder))
+                == typeof(ResourceTypeFolder))
             {
                 continue;
             }

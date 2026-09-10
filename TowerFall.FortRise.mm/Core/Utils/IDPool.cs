@@ -5,6 +5,7 @@ using System.Runtime.InteropServices;
 
 namespace FortRise;
 
+
 public static class IDPool
 {
     public static Dictionary<string, int> PooledID = new Dictionary<string, int>();

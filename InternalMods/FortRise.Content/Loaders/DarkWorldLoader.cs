@@ -23,8 +23,8 @@ internal static class DarkWorldLoader
             IResourceInfo? xmlResource = null;
             foreach (var child in map.Childrens)
             {
-                if ((child.ResourceType == typeof(RiseCore.ResourceTypeOel) ||
-                child.ResourceType == typeof(RiseCore.ResourceTypeJson)) &&
+                if ((child.ResourceType == typeof(ResourceTypeOel) ||
+                child.ResourceType == typeof(ResourceTypeJson)) &&
                 !child.Path.Contains("icon.json"))
                 {
                     levels.Add(child);

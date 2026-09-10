@@ -8,65 +8,56 @@ public class FolderModResource : ModResource
     public string FolderDirectory;
     public FolderModResource(ModuleMetadata metadata, IModContent content) : base(metadata, content)
     {
-        FolderDirectory = metadata.PathDirectory.Replace('\\', '/');
+        FolderDirectory = FileSystemUtils.NormalizedPath(metadata.PathDirectory);
     }
 
     public override void Lookup(string prefix)
     {
-        var rootFolder = new FileResourceInfo(this, "", FolderDirectory + '/');
-        var files = Directory.GetFiles(FolderDirectory);
-        Array.Sort(files);
-
-        for (int i = 0; i < files.Length; i++)
-        {
-            var filePath = files[i].Replace('\\', '/');
-
-            var simplifiedPath = filePath.Replace(FolderDirectory + '/', "");
-            var fileResource = new FileResourceInfo(this, simplifiedPath, filePath);
-            Add(simplifiedPath, fileResource);
-            rootFolder.Childrens.Add(fileResource);
-        }
-        var folders = Directory.GetDirectories(FolderDirectory);
-        Array.Sort(folders);
-
-        foreach (var folder in folders)
-        {
-            var fixedFolder = folder.Replace('\\', '/');
-            var simpliPath = fixedFolder.Replace(FolderDirectory + '/', "");
-
-            var newFolderResource = new FileResourceInfo(this, simpliPath, fixedFolder);
-            Lookup(prefix, folder, FolderDirectory, newFolderResource);
-            Add(simpliPath, newFolderResource);
-            rootFolder.Childrens.Add(newFolderResource);
-        }
-
-        Add("", rootFolder);
+        Lookup(prefix, FolderDirectory, FolderDirectory, null);
     }
 
     public void Lookup(string prefix, string path, string modDirectory, FileResourceInfo folderResource)
     {
+        bool isRoot = folderResource is null;
+        int modLength = modDirectory.Length;
+
+        if (isRoot)
+        {
+            folderResource = new FileResourceInfo(this, string.Empty, modDirectory + "/");
+        }
+
         var files = Directory.GetFiles(path);
         Array.Sort(files);
+
         for (int i = 0; i < files.Length; i++)
         {
-            var filePath = files[i].Replace('\\', '/');
+            var rawFile = files[i];
+            var filePath = FileSystemUtils.NormalizedPath(rawFile);
+            var simplifiedPath = FileSystemUtils.GetSimplifiedPath(rawFile, modLength);
 
-            var simplifiedPath = filePath.Replace(modDirectory + '/', "");
             var fileResource = new FileResourceInfo(this, simplifiedPath, filePath);
             Add(simplifiedPath, fileResource);
             folderResource.Childrens.Add(fileResource);
         }
         var folders = Directory.GetDirectories(path);
         Array.Sort(folders);
+
         foreach (var folder in folders)
         {
-            var fixedFolder = folder.Replace('\\', '/');
-            var simpliPath = fixedFolder.Replace(modDirectory + '/', "");
+            var fixedFolder = FileSystemUtils.NormalizedPath(folder);
+            var simpliPath = FileSystemUtils.GetSimplifiedPath(folder, modLength);
 
-            var newFolderResource = new FileResourceInfo(this, simpliPath, prefix + simpliPath);
+            string resourcePath = string.IsNullOrEmpty(prefix) ? fixedFolder : prefix + fixedFolder;
+
+            var newFolderResource = new FileResourceInfo(this, simpliPath, resourcePath);
             Lookup(prefix, folder, modDirectory, newFolderResource);
             Add(simpliPath, newFolderResource);
             folderResource.Childrens.Add(newFolderResource);
+        }
+
+        if (isRoot)
+        {
+            Add(string.Empty, folderResource);
         }
     }
 }

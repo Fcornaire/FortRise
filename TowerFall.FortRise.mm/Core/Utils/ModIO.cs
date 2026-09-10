@@ -25,17 +25,17 @@ public static class ModIO
 
     public static bool IsFolder(IResourceInfo resource)
     {
-        return resource.ResourceType == typeof(RiseCore.ResourceTypeFolder);
+        return resource.ResourceType == typeof(ResourceTypeFolder);
     }
 
     public static bool IsFile(IResourceInfo resource)
     {
-        return resource.ResourceType != typeof(RiseCore.ResourceTypeFolder);
+        return resource.ResourceType != typeof(ResourceTypeFolder);
     }
 
     public static bool IsFolder(string path)
     {
-        if (RiseCore.ResourceTree.TryGetValue(path, out var res))
+        if (ResourceTree.TryGetValue(path, out var res))
         {
             return IsFolder(res);
         }
@@ -45,7 +45,7 @@ public static class ModIO
 
     public static bool IsFile(string path)
     {
-        if (RiseCore.ResourceTree.TryGetValue(path, out var res))
+        if (ResourceTree.TryGetValue(path, out var res))
         {
             return IsFile(res);
         }
@@ -55,17 +55,17 @@ public static class ModIO
 
     public static bool IsDirectoryOrFileExists(string path)
     {
-        return RiseCore.ResourceTree.IsExist(path) || Directory.Exists(path) || File.Exists(path);
+        return ResourceTree.IsExist(path) || Directory.Exists(path) || File.Exists(path);
     }
 
     public static bool IsFileExists(string path)
     {
-        return RiseCore.ResourceTree.IsExist(path) || File.Exists(path);
+        return ResourceTree.IsExist(path) || File.Exists(path);
     }
 
     public static bool IsDirectoryExists(string path)
     {
-        return RiseCore.ResourceTree.IsExist(path) || Directory.Exists(path);
+        return ResourceTree.IsExist(path) || Directory.Exists(path);
     }
 
     public static XmlDocument LoadXml(IResourceInfo resource)
@@ -76,7 +76,7 @@ public static class ModIO
 
     public static XmlDocument LoadXml(string path)
     {
-        if (RiseCore.ResourceTree.TryGetValue(path, out var resource))
+        if (ResourceTree.TryGetValue(path, out var resource))
         {
             return ModIO.LoadXml(resource);
         }
@@ -87,7 +87,7 @@ public static class ModIO
 
     public static string[] GetFiles(string path)
     {
-        if (RiseCore.ResourceTree.TryGetValue(path, out var res))
+        if (ResourceTree.TryGetValue(path, out var res))
         {
             return GetFiles(res);
         }
@@ -99,7 +99,7 @@ public static class ModIO
         List<IResourceInfo> childs = [];
         foreach (var r in res.Childrens)
         {
-            if (r.ResourceType == typeof(RiseCore.ResourceTypeFile))
+            if (r.ResourceType == typeof(ResourceTypeFile))
             {
                 childs.Add(r);
             }
@@ -116,7 +116,7 @@ public static class ModIO
 
     public static string[] GetDirectories(string path)
     {
-        if (RiseCore.ResourceTree.TryGetValue(path, out var res))
+        if (ResourceTree.TryGetValue(path, out var res))
         {
             return GetDirectories(res);
         }
@@ -128,7 +128,7 @@ public static class ModIO
         List<IResourceInfo> childs = [];
         foreach (var r in res.Childrens)
         {
-            if (r.ResourceType == typeof(RiseCore.ResourceTypeFolder))
+            if (r.ResourceType == typeof(ResourceTypeFolder))
             {
                 childs.Add(r);
             }
@@ -150,7 +150,7 @@ public static class ModIO
 
     public static Stream OpenRead(string path)
     {
-        if (RiseCore.ResourceTree.TryGetValue(path, out var res))
+        if (ResourceTree.TryGetValue(path, out var res))
         {
             return OpenRead(res);
         }
@@ -160,7 +160,7 @@ public static class ModIO
 
     public static Stream Open(string path, FileMode mode)
     {
-        if (RiseCore.ResourceTree.TryGetValue(path, out var res))
+        if (ResourceTree.TryGetValue(path, out var res))
         {
             var rfs = res.Stream;
             return rfs;
@@ -177,7 +177,7 @@ public static class ModIO
 
     public static StreamReader OpenText(string path)
     {
-        if (RiseCore.ResourceTree.TryGetValue(path, out var res))
+        if (ResourceTree.TryGetValue(path, out var res))
         {
             return OpenText(res);
         }
@@ -187,7 +187,7 @@ public static class ModIO
 
     public static string ReadAllText(string path) 
     {
-        if (RiseCore.ResourceTree.TryGetValue(path, out var res))
+        if (ResourceTree.TryGetValue(path, out var res))
         {
             return ReadAllText(res);
         }

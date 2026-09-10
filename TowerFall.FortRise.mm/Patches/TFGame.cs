@@ -422,7 +422,7 @@ namespace TowerFall
 
             if (RiseCore.DumpResources)
             {
-                TaskHelper.RunAsync("dumping assets", RiseCore.ResourceTree.DumpAll);
+                TaskHelper.RunAsync("dumping assets", ResourceTree.DumpAll);
             }
 
             Task.Run(CheckUpdate);

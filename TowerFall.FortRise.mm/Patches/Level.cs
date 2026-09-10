@@ -61,7 +61,7 @@ namespace TowerFall
                 _ => $"{levelSystem.ID.X},{levelSystem.ID.Y}"
             };
 
-            if (RiseCore.ResourceTree.TreeMap.TryGetValue(levelPath, out var res)) 
+            if (ResourceTree.TreeMap.TryGetValue(levelPath, out var res)) 
             {
                 var fullPath = Path.GetDirectoryName(res.FullPath);
                 // we need it to be in the folder. If it's in the zip, don't watch

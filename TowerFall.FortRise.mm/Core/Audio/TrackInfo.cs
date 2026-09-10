@@ -16,11 +16,11 @@ public struct TrackInfo
     public AudioTrack Create() 
     {
         var stream = Resource.Stream;
-        if (Resource.ResourceType == typeof(RiseCore.ResourceTypeOggFile)) 
+        if (Resource.ResourceType == typeof(ResourceTypeOggFile)) 
         {
             return new OggAudioTrack(stream);
         }
-        if (Resource.ResourceType == typeof(RiseCore.ResourceTypeWavFile)) 
+        if (Resource.ResourceType == typeof(ResourceTypeWavFile)) 
         {
             return new WavAudioTrack(stream);
         }

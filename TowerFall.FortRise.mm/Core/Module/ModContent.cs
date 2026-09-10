@@ -11,7 +11,7 @@ internal class ModContent : IModContent
     {
         get
         {
-            return RiseCore.ResourceTree.Get($"mod:{Metadata.Name}/");
+            return ResourceTree.Get($"mod:{Metadata.Name}/");
         }
     }
 

@@ -76,19 +76,19 @@ public abstract class ResourceInfo : IResourceInfo
     public IResourceInfo GetRelativePath(string path)
     {
         string actualPath = System.IO.Path.Combine(RootPath, path);
-        return RiseCore.ResourceTree.Get(actualPath);
+        return ResourceTree.Get(actualPath);
     }
 
     public bool TryGetRelativePath(string path, out IResourceInfo resource)
     {
         string actualPath = System.IO.Path.Combine(RootPath, path);
-        return RiseCore.ResourceTree.TryGetValue(actualPath, out resource);
+        return ResourceTree.TryGetValue(actualPath, out resource);
     }
 
     public bool ExistsRelativePath(string path)
     {
         string actualPath = System.IO.Path.Combine(RootPath, path);
-        return RiseCore.ResourceTree.IsExist(actualPath);
+        return ResourceTree.IsExist(actualPath);
     }
 
     public IEnumerable<IResourceInfo> EnumerateChildrens(string pattern)
@@ -110,46 +110,46 @@ public abstract class ResourceInfo : IResourceInfo
 
         if (filename.EndsWith(".png"))
         {
-            ResourceType = typeof(RiseCore.ResourceTypeAtlasPng);
+            ResourceType = typeof(ResourceTypeAtlasPng);
         }
         else if (path.EndsWith(".dll"))
         {
-            ResourceType = typeof(RiseCore.ResourceTypeAssembly);
+            ResourceType = typeof(ResourceTypeAssembly);
         }
 
         else if (path.EndsWith(".ogg"))
         {
-            ResourceType = typeof(RiseCore.ResourceTypeOggFile);
+            ResourceType = typeof(ResourceTypeOggFile);
         }
 
         else if (path.EndsWith(".wav"))
         {
-            ResourceType = typeof(RiseCore.ResourceTypeWavFile);
+            ResourceType = typeof(ResourceTypeWavFile);
         }
 
         else if (path.EndsWith(".json"))
         {
-            ResourceType = typeof(RiseCore.ResourceTypeJson);
+            ResourceType = typeof(ResourceTypeJson);
         }
         else if (path.EndsWith(".oel"))
         {
-            ResourceType = typeof(RiseCore.ResourceTypeOel);
+            ResourceType = typeof(ResourceTypeOel);
         }
         else if (path.EndsWith(".xml"))
         {
-            ResourceType = typeof(RiseCore.ResourceTypeXml);
+            ResourceType = typeof(ResourceTypeXml);
         }
         else if (path.EndsWith(".fxb"))
         {
-            ResourceType = typeof(RiseCore.ResourceTypeEffects);
+            ResourceType = typeof(ResourceTypeEffects);
         }
         else if (Childrens.Count != 0)
         {
-            ResourceType = typeof(RiseCore.ResourceTypeFolder);
+            ResourceType = typeof(ResourceTypeFolder);
         }
         else
         {
-            ResourceType = typeof(RiseCore.ResourceTypeFile);
+            ResourceType = typeof(ResourceTypeFile);
         }
         RiseCore.Events.Invoke_OnResourceAssignType(path, filename, ref ResourceType);
     }

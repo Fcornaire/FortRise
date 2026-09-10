@@ -34,7 +34,7 @@ public abstract class ModResource : IModResource
 
 
         Resources.Add(path, resource);
-        RiseCore.ResourceTree.TreeMap.Add($"{rootPath}{path}", resource);
+        ResourceTree.TreeMap.Add($"{rootPath}{path}", resource);
     }
 
 
