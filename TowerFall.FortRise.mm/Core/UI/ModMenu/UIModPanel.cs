@@ -68,7 +68,7 @@ internal class UIModPanel : MenuItem
     {
         if (Selected)
         {
-            Draw.HollowRect(Position.X - 4, Position.Y - 4, 200, 22, Color.Yellow);
+            Draw.HollowRect(Position.X - 4, Position.Y - 4, 200, 24, Color.Yellow);
         }
 
         Draw.TextureJustify(modItem.Icon, new Vector2(Position.X, Position.Y), Vector2.Zero);

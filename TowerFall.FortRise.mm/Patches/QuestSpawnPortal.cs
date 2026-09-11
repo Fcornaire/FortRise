@@ -29,7 +29,7 @@ namespace TowerFall
         {
             Vector2 position = Position;
             Vector2[] nodes = Nodes;
-            if (RiseCore.EnemyLoader.TryGetValue(name, out EnemyLoader loader)) 
+            if (EntityRegistry.EnemyLoader.TryGetValue(name, out EnemyLoader loader)) 
             {
                 Level.Add(loader?.Invoke(position + new Vector2(0f, 2f), facing, nodes));
                 return;

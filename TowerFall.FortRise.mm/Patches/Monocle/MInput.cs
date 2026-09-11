@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using FortRise;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
@@ -204,10 +205,11 @@ public static class patch_MInput
 
 internal static class FrameworkPlatform
 {
+    [UnsafeAccessor(UnsafeAccessorKind.StaticField, Name = "INTERNAL_devices")]
+    public static extern ref IntPtr[] GetInternalDevices([UnsafeAccessorType("Microsoft.Xna.Framework.SDL3_FNAPlatform, FNA")]object dummy);
+
     public static IntPtr GetGamepadDevice(int index)
     {
-        var platform = typeof(Vector2).Assembly.GetType("Microsoft.Xna.Framework.SDL3_FNAPlatform");
-        var devices = platform.GetField("INTERNAL_devices", BindingFlags.Static | BindingFlags.NonPublic);
-        return ((IntPtr[])devices.GetValue(null))[index];
+        return GetInternalDevices(null)[index];
     }
 }

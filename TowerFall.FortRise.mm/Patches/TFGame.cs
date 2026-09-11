@@ -237,7 +237,20 @@ namespace TowerFall
                 MenuAtlas.SubTextures[k] = v;
             }
 
-            RiseCore.ModuleManager.NameToIcon["FortRise"] = FortRiseModule.FortRiseIcon;
+            ModuleManager.Instance.NameToIcon["FortRise"] = FortRiseModule.FortRiseIcon;
+
+            foreach (var mod in ModuleManager.Instance.Mods)
+            {
+                if (mod.OwnedResources.TryGetValue("icon.png", out var img))
+                {
+                    using var png = img.Stream;
+                    var texture = new Monocle.Texture(
+                        Texture2D.FromStream(Instance.GraphicsDevice, png));
+
+                    ModuleManager.Instance.NameToIcon[mod.Metadata.Name] =
+                        new Subtexture(texture);
+                }
+            }
 
             foreach (var batch in ModuleManager.Instance.RegistryBatches[RegistryBatchType.PreloadedContent])
             {
