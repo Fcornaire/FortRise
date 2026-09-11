@@ -177,8 +177,6 @@ public static partial class RiseCore
 
         FortRiseModule = ModuleManager.CreateFortRiseModule();
 
-        CustomMenuStateRegistry.LoadAllBuiltinMenuState();
-
         // load the internals first
         ModuleManager.LoadModsFromDirectory(Path.Combine(GameRootPath, "Internals"));
         ModuleManager.LoadModsFromDirectory(Path.Combine(GameRootPath, "Mods"));

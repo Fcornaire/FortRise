@@ -40,7 +40,7 @@ public class UIModToggler : CustomMenuState
         toggles = [];
         buttons = [];
         onOffs = [];
-        Main.BackState = ModRegisters.MenuState<UIModMenu>();
+        Main.BackState = FortRiseModule.UIModsEntry.MenuState;
         oldBlacklistedMods = RiseCore.ModuleManager.BlacklistedMods;
         blacklistedMods = [.. oldBlacklistedMods];
 

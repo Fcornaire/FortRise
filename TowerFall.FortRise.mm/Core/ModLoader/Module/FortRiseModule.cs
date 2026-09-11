@@ -13,6 +13,11 @@ public sealed class FortRiseModule : Mod
     public static Subtexture FortRiseIcon;
     public static Subtexture PresetAddIcon;
     public static Subtexture PresetCustomIcon;
+    public static IMenuStateEntry UIModsEntry;
+    public static IMenuStateEntry UIArcherBlacklistEntry;
+    public static IMenuStateEntry UIMusicListEntry;
+    public static IMenuStateEntry UIModTogglerEntry;
+
     internal static FortRiseModuleSettings Settings => Instance.GetSettings<FortRiseModuleSettings>();
 
     public FortRiseModule(IModContent content, IModuleContext context, ILogger logger) : base(content, context, logger)
@@ -60,6 +65,27 @@ public sealed class FortRiseModule : Mod
         {
             Appear = (level) => level.Add(new BottomMiasma(BottomMiasma.Modes.DreadwoodBoss)),
             Disappear = (level) => level.Layers[0].GetFirst<BottomMiasma>()?.Dissipate()
+        });
+
+
+        UIModsEntry = Context.Registry.MenuStates.RegisterMenuState("UIMods", new MenuStateConfiguration() 
+        {
+            MenuStateType = typeof(UIModMenu)
+        });
+
+        UIArcherBlacklistEntry = Context.Registry.MenuStates.RegisterMenuState("UIArcherBlacklist", new MenuStateConfiguration() 
+        {
+            MenuStateType = typeof(UIArcherBlacklist)
+        });
+
+        UIMusicListEntry = Context.Registry.MenuStates.RegisterMenuState("UIMusicList", new MenuStateConfiguration() 
+        {
+            MenuStateType = typeof(UIMusicList)
+        });
+
+        UIModTogglerEntry = Context.Registry.MenuStates.RegisterMenuState("UIModToggler", new MenuStateConfiguration() 
+        {
+            MenuStateType = typeof(UIModToggler)
         });
 
         Context.Events.SaveData.BeforeSave += OnSave;

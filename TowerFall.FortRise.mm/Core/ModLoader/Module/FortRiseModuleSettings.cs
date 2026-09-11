@@ -43,12 +43,12 @@ internal sealed class FortRiseModuleSettings : ModuleSettings
         {
             settings.CreateButton("TOGGLE ARCHERS", () =>
             {
-                menu.State = ModRegisters.MenuState<UIArcherBlacklist>();
+                menu.State = FortRiseModule.UIArcherBlacklistEntry.MenuState;
             });
 
             settings.CreateButton("MUSIC LIST", () =>
             {
-                menu.State = ModRegisters.MenuState<UIMusicList>();
+                menu.State = FortRiseModule.UIMusicListEntry.MenuState;
             });
         }
 

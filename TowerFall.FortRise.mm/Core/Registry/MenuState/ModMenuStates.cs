@@ -6,6 +6,8 @@ namespace FortRise;
 
 public interface IModMenuStates
 {
+    IReadOnlyDictionary<string, IMenuStateEntry> RegisteredMenuStates { get; }
+
     IMenuStateEntry RegisterMenuState(string id, in MenuStateConfiguration configuration);
     IMenuStateEntry? GetMenuState(string id);
 }
@@ -15,6 +17,9 @@ internal sealed class ModMenuStates : IModMenuStates
 {
     private readonly RegistryQueue<IMenuStateEntry> registryQueue;
     private readonly ModuleMetadata metadata;
+
+    public IReadOnlyDictionary<string, IMenuStateEntry> RegisteredMenuStates 
+        => CustomMenuStateRegistry.MenuStateEntries;
 
     internal ModMenuStates(ModuleMetadata metadata, ModuleManager manager)
     {

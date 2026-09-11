@@ -18,7 +18,7 @@ public class UIModMenu(MainMenu main) : CustomMenuState(main)
         var modListPanel = new UIModListPanel(new Vector2(160f, 600));
         modListPanel.OnConfirmed = () =>
         {
-            Main.State = ModRegisters.MenuState<UIModToggler>();
+            Main.State = FortRiseModule.UIModTogglerEntry.MenuState;
         };
         Main.Add(modListPanel);
 

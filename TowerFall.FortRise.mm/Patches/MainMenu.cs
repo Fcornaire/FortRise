@@ -153,7 +153,7 @@ namespace TowerFall
 
             InitOptions(list);
             ToStartSelected = list[1];
-            BackState = ModRegisters.MenuState<UIModMenu>();
+            BackState = FortRiseModule.UIModsEntry.MenuState;
             TweenBGCameraToY(1);
         }
 
@@ -602,7 +602,7 @@ namespace TowerFall
             BladeButton creditsButton;
             if (MainMenu.NoQuit)
             {
-                modsButtons = new patch_BladeButton(206 - 18f, "MODS", () => State = ModRegisters.MenuState<UIModMenu>());
+                modsButtons = new patch_BladeButton(206 - 18f, "MODS", () => State = FortRiseModule.UIModsEntry.MenuState);
                 modsButtons.SetX(-50f);
 
                 list.Add(modsButtons);
@@ -613,7 +613,7 @@ namespace TowerFall
             }
             else
             {
-                modsButtons = new patch_BladeButton(192f - 18f, "MODS", () => State = ModRegisters.MenuState<UIModMenu>());
+                modsButtons = new patch_BladeButton(192f - 18f, "MODS", () => State = FortRiseModule.UIModsEntry.MenuState);
                 modsButtons.SetX(-50f);
                 list.Add(modsButtons);
                 optionsButton = new BladeButton(192f, "OPTIONS", this.MainOptions);
@@ -664,7 +664,7 @@ namespace TowerFall
                 MenuState.Credits => creditsButton,
                 MenuState.CoOp when RollcallMode is RollcallModes.Quest or RollcallModes.DarkWorld => coOpButton,
                 _ when RollcallMode is RollcallModes.Trials => trialsButton,
-                _ when OldState == ModRegisters.MenuState<UIModMenu>() => modsButtons,
+                _ when OldState == FortRiseModule.UIModsEntry.MenuState => modsButtons,
                 _ => fightButton
 
             };

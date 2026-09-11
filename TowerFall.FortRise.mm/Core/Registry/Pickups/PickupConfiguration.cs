@@ -20,7 +20,7 @@ public readonly struct PickupConfiguration()
     [Obsolete("Use 'ArrowConfiguration.ArrowPickupColorB' on an arrow instead.")]
     public Option<Color> ColorB { get; init; }
 
-    public struct CreatePickupArgs()
+    public readonly struct CreatePickupArgs()
     {
         public required Vector2 Position { get; init; }
         public required Vector2 TargetPosition { get; init; } 
