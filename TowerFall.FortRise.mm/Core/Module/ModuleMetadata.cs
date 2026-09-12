@@ -63,7 +63,7 @@ public partial class ModuleMetadata : IEquatable<ModuleMetadata>
 
     public override string ToString()
     {
-        return $"Metadata: {Name} {Version}";
+        return $"{Name} {Version}";
     }
 
 
