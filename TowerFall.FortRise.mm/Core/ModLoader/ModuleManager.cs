@@ -325,22 +325,77 @@ internal class ModuleManager
                 continue;
             }
 
-            if (metadata.Version.Major != internalMetadata.Version.Major || metadata.Version > internalMetadata.Version)
+            if (metadata.Version.IsSatisfiedBy(internalMetadata.Version))
             {
-                if (storeError)
-                {
-                    ErrorPanel.StoreError($"Outdated Dependency {metadata.Name} {metadata.Version} > {internalMetadata.Version}");
+                return true;
+            }
+
+            if (!storeError)
+            {
+                return false;
+            }
+
+            string op = "^";
+            switch (metadata.Version.Operator)
+            {
+                case "=":
+                    ErrorPanel.StoreError($"Dependency Version Mismatched {metadata.Name} {metadata.Version} != {internalMetadata.Version}");
                     logger.LogError(
-                        "Outdated Dependency {modName} {modVersion} > {targetModVersion}",
+                        "Dependency Version Mismatched {modName} {modVersion} != {targetModVersion}",
                         metadata.Name,
                         metadata.Version,
                         internalMetadata.Version
                     );
-                }
-                return false;
+                    return false;
+                case ">":
+                    op = "<";
+                    break;
+                case ">=":
+                    op = "<=";
+                    break;
+                case "<":
+                case "<=":
+                    op = metadata.Version.Operator;
+                    ErrorPanel.StoreError($"Possible mod instability with incompatible range {metadata.Name} {metadata.Version} {op} {internalMetadata.Version}");
+                    logger.LogError(
+                        "Possible mod instability with incompatible range {modName} {modVersion} {op} {targetModVersion}",
+                        metadata.Name,
+                        metadata.Version,
+                        op,
+                        internalMetadata.Version
+                    );
+                    return false;
+                case "~":
+                    ErrorPanel.StoreError($"Outdated Minor Dependency {metadata.Name} {metadata.Version} < {internalMetadata.Version}");
+                    logger.LogError(
+                        "Outdated Minor Dependency {modName} {modVersion} < {targetModVersion}",
+                        metadata.Name,
+                        metadata.Version,
+                        internalMetadata.Version
+                    );
+                    return false;
+                case "^":
+                    ErrorPanel.StoreError($"Outdated Major Dependency {metadata.Name} {metadata.Version} < {internalMetadata.Version}");
+                    logger.LogError(
+                        "Outdated Major Dependency {modName} {modVersion} < {targetModVersion}",
+                        metadata.Name,
+                        metadata.Version,
+                        internalMetadata.Version
+                    );
+                    return false;
+                default:
+                    break;
             }
 
-            return true;
+            ErrorPanel.StoreError($"Outdated Dependency {metadata.Name} {metadata.Version} {op} {internalMetadata.Version}");
+            logger.LogError(
+                "Outdated Dependency {modName} {modVersion} {op} {targetModVersion}",
+                metadata.Name,
+                metadata.Version,
+                op,
+                internalMetadata.Version
+            );
+            return false;
         }
 
         return false;

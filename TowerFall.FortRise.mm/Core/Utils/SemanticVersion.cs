@@ -6,21 +6,29 @@ using System.Text.Json.Serialization;
 
 namespace FortRise;
 
-public readonly struct SemanticVersion : IEquatable<SemanticVersion>, IComparable<SemanticVersion>
+public readonly partial struct SemanticVersion : IEquatable<SemanticVersion>, IComparable<SemanticVersion>
 {
     public int Major { get; init; }
     public int Minor { get; init; }
     public int Patch { get; init; }
     public string? Prerelease { get; init; }
+    public string? Operator { get; init; }
 
     public static readonly SemanticVersion Empty = new SemanticVersion(0, 0, 0, null);
 
-    public SemanticVersion(int major = 1, int minor = 0, int patch = 0, string? prerelease = null)
+    public SemanticVersion(
+        int major = 1, 
+        int minor = 0, 
+        int patch = 0, 
+        string? prerelease = null,
+        string? sOperator = null
+    )
     {
         Major = major;
         Minor = minor;
         Patch = patch;
         Prerelease = prerelease;
+        Operator = sOperator;
     }
 
     public SemanticVersion(string versionString)
@@ -53,6 +61,24 @@ public readonly struct SemanticVersion : IEquatable<SemanticVersion>, IComparabl
             return false;
         }
 
+        string op = string.Empty;
+        if (versionString.Length >= 2 
+            && (versionString[..2].SequenceEqual(">=".AsSpan()) || 
+                versionString[..2].SequenceEqual("<=".AsSpan())))
+        {
+            op = versionString[..2].ToString();
+            versionString = versionString[2..].TrimStart();
+        }
+        else if (versionString.Length >= 1)
+        {
+            char first = versionString[0];
+            if (first == '=' || first == '>' || first == '<' || first == '^' || first == '~')
+            {
+                op = versionString[..1].ToString();
+                versionString = versionString[1..].TrimStart();
+            }
+        }
+
         ReadOnlySpan<char> spanString = versionString;
 
         int i = 0;
@@ -73,7 +99,7 @@ public readonly struct SemanticVersion : IEquatable<SemanticVersion>, IComparabl
 		if (i != versionString.Length)
 			return false;
 
-        version = new SemanticVersion(major, minor, patch, prerelease);
+        version = new SemanticVersion(major, minor, patch, prerelease, op);
         return true;
     }
 
@@ -260,6 +286,32 @@ public readonly struct SemanticVersion : IEquatable<SemanticVersion>, IComparabl
 	public static bool operator >=(SemanticVersion left, SemanticVersion right)
     {
 		return left.CompareTo(right) >= 0;
+    }
+
+    public bool IsSatisfiedBy(in SemanticVersion version) => Operator switch 
+    {
+        "=" => version.CompareTo(this) == 0,
+        ">" => version.CompareTo(this) > 0,
+        ">=" => version.CompareTo(this) >= 0,
+        "<" => version.CompareTo(this) < 0,
+        "<=" => version.CompareTo(this) <= 0,
+        "^" or "" => CaretCompare(version),
+        "~" => TildeCompare(version),
+        _ => throw new NotSupportedException($"Operator range: {Operator} is not supported.")
+    };
+
+    private bool CaretCompare(in SemanticVersion version)
+    {
+        if (version.CompareTo(this) < 0) { return false; }
+        if (version.Major > 0) { return version.Major == Major; }
+        if (version.Minor > 0) { return version.Major == 0 && version.Minor == Minor; }
+        return version.Major == 0 && version.Minor == 0 && version.Patch == Patch;
+    }
+
+    private bool TildeCompare(in SemanticVersion version)
+    {
+        if (version.CompareTo(this) < 0) { return false; }
+        return version.Major == Major && version.Minor == Minor;
     }
 }
 
