@@ -1,3 +1,6 @@
+# 5.5.0-beta.2
++ Added 
+
 # 5.5.0-beta.1
 + Added an ability to load multiple mods inside of a zip file.
 + Improved load times for every mods load.

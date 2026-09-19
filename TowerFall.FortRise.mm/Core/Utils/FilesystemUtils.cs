@@ -14,16 +14,17 @@ public static class FileSystemUtils
             offset += 1;
         }
 
-        var relativeSpan = span[Math.Min(offset, span.Length)..];
+        int actualOffset =  Math.Min(offset, span.Length);
+        var relativeSpan = span[actualOffset..];
 
         if (relativeSpan.IndexOf('\\') < 0)
         {
             return relativeSpan.ToString();
         }
 
-        return string.Create(relativeSpan.Length, path, (dest, src) => 
+        return string.Create(relativeSpan.Length, (path, actualOffset), (dest, src) => 
         {
-            src.AsSpan().CopyTo(dest);
+            src.path.AsSpan(src.actualOffset).CopyTo(dest);
             dest.Replace('\\', '/');
         });
     }
